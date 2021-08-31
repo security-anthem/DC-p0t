@@ -1,6 +1,11 @@
 #include <uapi/linux/ptrace.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
+#include <linux/nsproxy.h>
+#include <linux/pid_namespace.h>
+#include <linux/proc_ns.h>
+
+#define ARGSIZE 128
 
 enum event_type {
     EVENT_ARG,
@@ -13,10 +18,27 @@ struct data_t {
     u32 uid;
     char comm[TASK_COMM_LEN];
     enum event_type type;
+    char argv[ARGSIZE];
     int retval;
 };
 
 BPF_PERF_OUTPUT(events);
+
+static int __submit_arg(struct pt_regs *ctx, void *ptr, struct data_t *data)
+{
+    bpf_probe_read_user(data->argv, sizeof(data->argv), ptr);
+    events.perf_submit(ctx, data, sizeof(struct data_t));
+    return 1;
+}
+static int submit_arg(struct pt_regs *ctx, void *ptr, struct data_t *data)
+{
+    const char *argp = NULL;
+    bpf_probe_read_user(&argp, sizeof(argp), ptr);
+    if (argp) {
+        return __submit_arg(ctx, (void *)(argp), data);
+    }
+    return 0;
+}
 
 static int submit(struct pt_regs *ctx, void *ptr, struct data_t *data)
 {
@@ -34,10 +56,17 @@ int syscall__execve(struct pt_regs *ctx,
     // create data here and pass to submit_arg to save stack space (#555)
     struct data_t data = {};
     struct task_struct *task;
+    
+    task = (struct task_struct *) bpf_get_current_task();
+    struct pid_namespace *pns = (struct pid_namespace *) task->nsproxy->pid_ns_for_children;
+
+    if (pns->ns.inum == PROC_PID_INIT_INO) {
+        return 0;
+    }
 
     data.pid = bpf_get_current_pid_tgid() >> 32;
 
-    task = (struct task_struct *)bpf_get_current_task();
+    // task = (struct task_struct *)bpf_get_current_task();
     // Some kernels, like Ubuntu 4.13.0-generic, return 0
     // as the real_parent->tgid.
     // We use the get_ppid function as a fallback in those cases. (#1883)
@@ -46,8 +75,19 @@ int syscall__execve(struct pt_regs *ctx,
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
     data.type = EVENT_ARG;
 
-    submit(ctx, (void *)filename, &data);
+    __submit_arg(ctx, (void *)filename, &data);
 
+    // skip first arg, as we submitted filename
+    #pragma unroll
+    for (int i = 1; i < MAXARG; i++) {
+        if (submit_arg(ctx, (void *)&__argv[i], &data) == 0)
+            goto out;
+    }
+
+    // handle truncated argument list
+    char ellipsis[] = "...";
+    __submit_arg(ctx, (void *)ellipsis, &data);
+out:
     return 0;
 }
 
@@ -55,13 +95,20 @@ int do_ret_sys_execve(struct pt_regs *ctx)
 {
     struct data_t data = {};
     struct task_struct *task;
+    
+    task = (struct task_struct *) bpf_get_current_task();
+    struct pid_namespace *pns = (struct pid_namespace *) task->nsproxy->pid_ns_for_children;
+
+    if (pns->ns.inum == PROC_PID_INIT_INO) {
+        return 0;
+    }
 
     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
 
     data.pid = bpf_get_current_pid_tgid() >> 32;
     data.uid = uid;
 
-    task = (struct task_struct *)bpf_get_current_task();
+    // task = (struct task_struct *)bpf_get_current_task();
     // Some kernels, like Ubuntu 4.13.0-generic, return 0
     // as the real_parent->tgid.
     // We use the get_ppid function as a fallback in those cases. (#1883)
