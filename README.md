@@ -14,11 +14,16 @@ VirtualBox 6.1.16
 
 ### packages
 
+1. eBPFのインストール
+
 ```
 $ sudo apt update
 $ sudo apt install -y bpfcc-tools
-$ sudo apt install -y docker.io
 ```
+
+2. Dockerのインストール
+ 
+https://docs.docker.com/engine/install/ubuntu/
 
 ### start
 
