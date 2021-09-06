@@ -84,9 +84,9 @@ appには，インストール対象のプログラムの名前，app_versionに
 
 |サービス名|ファイル名|
 -----|------
-|bind9|sample/init_bind9_sample.json|
-|Apache HTTP Server|sample/init_apache_sample.json|
-|php|sample/init_php_sample.json|
+|bind9|setup/sample/init_bind9_sample.json|
+|Apache HTTP Server|setup/sample/init_apache_sample.json|
+|php|setup/sample/init_php_sample.json|
 
 
 現在，利用可能なプログラムは，以下の通り
