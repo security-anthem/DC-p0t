@@ -1,4 +1,4 @@
-DC-p0t
+DC-p0t (Hurry Potter)
 =============
 DC-p0tは，攻撃環境を再現する高対話型のハニーポットです．
 Docker上にWebサーバまたはDNSサーバを立ち上げ，tcpdumpを用いて通信を監視します．
