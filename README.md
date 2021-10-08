@@ -8,7 +8,7 @@ Docker上にWebサーバまたはDNSサーバを立ち上げ，tcpdumpを用い�
 ## Description
 -->
 ## 利用例
-Docker上でbind9を立ち上げた状態で，google.comのDNSを問い合わせた際の端末およびWiresharkの画面を示す．
+Docker上でbind9を立ち上げた状態で，google.comのDNSを問い合わせた際の端末およびWiresharkの画面
 ![端末](img/term1.png)
 
 Wiresharkでtcpdump.pcapを開いた画面
@@ -29,7 +29,6 @@ BW-Potは，HTTPまたはHTTPSを対象とした高対話型ハニーポット�
 ## 動作確認した環境
 |||
 ----|----
-|アーキテクチャ| x86_64              |
 |ホストOS      |Windows 10 Pro       |
 |VMM           | Oracle VM VirtualBox|
 |ゲストOS      |Ubuntu 20.04.1       |
@@ -40,7 +39,6 @@ VirtualBox上に[Ubuntu](https://jp.ubuntu.com/download)をインストールし
 ## インストール方法
 1. BPF toolsのインストール
 ```
-sudo apt update
 sudo apt -y install bpfcc-tools
 ```
 
